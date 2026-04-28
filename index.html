@@ -2,94 +2,77 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Lista de Tarefas</title>
-
-  <style>
-    body {
-      font-family: Arial;
-      max-width: 500px;
-      margin: auto;
-    }
-
-    li {
-      cursor: pointer;
-      margin: 5px 0;
-    }
-
-    .done {
-      text-decoration: line-through;
-      color: gray;
-    }
-
-    button {
-      margin-left: 10px;
-    }
-  </style>
+  <title>Task Cloud App</title>
 </head>
 
 <body>
 
-<h1>📋 Lista de Tarefas</h1>
+<h1>📋 Task Cloud</h1>
 
-<input type="text" id="taskInput" placeholder="Nova tarefa">
+<input id="taskInput" placeholder="Nova tarefa">
 <button onclick="addTask()">Adicionar</button>
 
-<ul id="taskList"></ul>
+<ul id="list"></ul>
 
-<script>
-  let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    onSnapshot,
+    deleteDoc,
+    doc
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  function saveTasks() {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
-  }
+  // 🔧 CONFIG DO FIREBASE (você vai pegar no console)
+  const firebaseConfig = {
+    apiKey: "SUA_API_KEY",
+    authDomain: "SEU_PROJETO.firebaseapp.com",
+    projectId: "SEU_PROJETO",
+    storageBucket: "SEU_PROJETO.appspot.com",
+    messagingSenderId: "XXXX",
+    appId: "XXXX"
+  };
 
-  function renderTasks() {
-    let list = document.getElementById("taskList");
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  const tasksRef = collection(db, "tasks");
+
+  // 📥 Ler tarefas em tempo real
+  onSnapshot(tasksRef, (snapshot) => {
+    let list = document.getElementById("list");
     list.innerHTML = "";
 
-    tasks.forEach((task, index) => {
+    snapshot.forEach((docItem) => {
       let li = document.createElement("li");
-      li.textContent = task.text;
-
-      if (task.done) li.classList.add("done");
-
-      li.onclick = () => {
-        tasks[index].done = !tasks[index].done;
-        saveTasks();
-        renderTasks();
-      };
+      li.textContent = docItem.data().text;
 
       let btn = document.createElement("button");
       btn.textContent = "❌";
-      btn.onclick = (e) => {
-        e.stopPropagation();
-        tasks.splice(index, 1);
-        saveTasks();
-        renderTasks();
+
+      btn.onclick = async () => {
+        await deleteDoc(doc(db, "tasks", docItem.id));
       };
 
       li.appendChild(btn);
       list.appendChild(li);
     });
-  }
+  });
 
-  function addTask() {
+  // ➕ adicionar tarefa
+  window.addTask = async function () {
     let input = document.getElementById("taskInput");
-    let text = input.value.trim();
 
-    if (text === "") {
-      alert("Digite uma tarefa!");
-      return;
-    }
+    if (!input.value.trim()) return;
 
-    tasks.push({ text: text, done: false });
+    await addDoc(tasksRef, {
+      text: input.value
+    });
 
     input.value = "";
-    saveTasks();
-    renderTasks();
-  }
-
-  renderTasks();
+  };
 </script>
 
 </body>
